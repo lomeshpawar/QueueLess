@@ -7,7 +7,7 @@
 **Frontend preview URL:** https://lomeshpawar.github.io/QueueLess/  
 **Deployment workflow:** https://github.com/lomeshpawar/QueueLess/actions/workflows/pages.yml
 
-The workflow builds the React/Vite frontend and attempts to enable GitHub Pages before publishing. If GitHub still reports a Pages configuration/permission error, open [Repository Pages settings](https://github.com/lomeshpawar/QueueLess/settings/pages), set **Build and deployment → Source** to **GitHub Actions**, save, and rerun the workflow. The preview URL is not confirmed live until the deployment job succeeds.
+The workflow builds the React/Vite frontend. GitHub Pages must be enabled by a repository administrator: open [Repository Pages settings](https://github.com/lomeshpawar/QueueLess/settings/pages), set **Build and deployment → Source** to **GitHub Actions**, and save. Then rerun the [Pages workflow](https://github.com/lomeshpawar/QueueLess/actions/workflows/pages.yml). The preview URL is not confirmed live until the deployment job succeeds.
 
 This Pages deployment publishes the built React/Vite frontend only. Queue generation, staff authentication, token management, live queue state, and statistics need the Express API and MongoDB to be hosted separately. The public preview is not a fully live queueing service until the client API base URL points to a deployed HTTPS API and the server/database are configured.
 
