@@ -1,69 +1,34 @@
 # QueueLess — Smart Token Management System
 
-A MERN-stack academic project for managing service-specific queues in a college environment. Visitors can create a token and check their place in the appropriate service queue; staff can call, serve, skip, or recall tokens from a dashboard.
+> MERN-stack academic project for digital token generation and service-specific queue management on campus.
 
-## Project status and hosting
+## Static frontend preview
 
-**Repository:** https://github.com/lomeshpawar/QueueLess
+**GitHub Pages preview:** https://lomeshpawar.github.io/QueueLess/
 
-The app uses React/Vite in the browser and an Express/MongoDB backend. GitHub Pages can host only a static frontend build; it cannot run Express or MongoDB. This repository currently documents a local workflow, so do not treat it as a fully live online queueing service until the frontend is built for a public base path and the API/database are deployed separately.
+This Pages deployment publishes the built React/Vite frontend only. Queue generation, staff authentication, token management, live queue state, and statistics need the Express API and MongoDB to be hosted separately. The public preview is not a fully live queueing service until the client API base URL points to a deployed HTTPS API and the server/database are configured.
 
 ## Features
 
-- Token creation for six campus services
-- Service-isolated queue position and waiting-time estimates
+- Token generation for six campus services
+- Service-specific queue position and estimated waiting time
 - Public queue snapshot and token lookup
-- Staff sign-in and token workflow actions
-- Staff dashboard statistics
-- Automated backend tests for queue isolation and staff operations
+- Staff login and queue management actions
+- Dashboard statistics
+- Automated backend tests
 
-### Campus services
+Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and Idea Lab.
 
-1. General Enquiry
-2. Exam Section
-3. Accounts
-4. Library
-5. College Canteen
-6. Idea Lab
+## Stack
 
-## Technology stack
+- React, Vite, JavaScript
+- Node.js, Express
+- MongoDB, Mongoose
+- Staff authentication and protected backend routes
 
-| Layer | Technology |
-|---|---|
-| Frontend | React, Vite, JavaScript |
-| Backend | Node.js, Express |
-| Database | MongoDB, Mongoose |
-| Authentication | JWT-based staff authentication |
-| Testing | Node test suite |
-| Local tools | MongoDB Community Server, MongoDB Compass |
+## Run locally
 
-## Project structure
-
-```text
-QueueLess/
-├── QueueLess/
-│   ├── client/     # React + Vite frontend
-│   ├── server/     # Express REST API and MongoDB models
-│   └── README.md
-├── .gitignore
-└── README.md
-```
-
-## Run locally on Windows
-
-### 1. Start MongoDB
-
-Install MongoDB Community Server and make sure the local service is running at:
-
-```text
-mongodb://127.0.0.1:27017
-```
-
-MongoDB Compass can be used to inspect the local database.
-
-### 2. Start the backend
-
-Open PowerShell:
+### Backend
 
 ```powershell
 cd QueueLess/server
@@ -72,13 +37,9 @@ npm install
 npm run dev
 ```
 
-Edit `.env` and set unique local secrets and staff credentials before running. Do not publish demo passwords, JWT secrets, or database credentials.
+Set unique local secrets and staff credentials in `.env`, then start MongoDB at the configured connection string. The default API port is `5000`.
 
-The backend defaults to `http://localhost:5000`, unless changed by configuration.
-
-### 3. Start the frontend
-
-Open a second terminal:
+### Frontend
 
 ```powershell
 cd QueueLess/client
@@ -86,53 +47,25 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal, normally `http://localhost:5173`.
+Open the local URL shown by Vite, typically `http://localhost:5173`.
 
-## API overview
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/auth/login` | Staff login |
-| GET | `/api/tokens` | Queue snapshot; supports service filtering |
-| POST | `/api/tokens` | Create a visitor token |
-| GET | `/api/tokens/mine/:tokenNumber` | Look up token position and wait time |
-| GET | `/api/tokens/stats` | Staff statistics (authenticated) |
-| POST | `/api/tokens/call-next` | Call the next waiting token for a service |
-| PATCH | `/api/tokens/:id/call` | Call a selected token |
-| PATCH | `/api/tokens/:id/serve` | Mark a token served |
-| PATCH | `/api/tokens/:id/skip` | Skip a token |
-| PATCH | `/api/tokens/:id/recall` | Return a skipped token to waiting |
-
-## Tests
-
-Run the backend test suite:
+### Tests
 
 ```powershell
 cd QueueLess/server
 npm test
 ```
 
-The tests are intended to cover service-specific queue isolation, queue positions, wait estimates, and staff operations. Check the command output before claiming the suite passes.
+## GitHub Pages deployment
 
-## Deployment notes
+The workflow in `.github/workflows/pages.yml` builds `QueueLess/client` with the correct repository base path and publishes the `dist/` output. Check the repository's Actions tab to confirm deployment status after a push.
 
-For a public deployment:
+## For a full public deployment
 
-1. Host the Express API on a Node-compatible host.
-2. Host MongoDB in a reachable managed instance and use a private connection string.
-3. Configure the frontend's API base URL for the deployed HTTPS API.
-4. Configure CORS to allow only the intended frontend origin.
-5. Build the Vite frontend with the correct base path if deploying to GitHub Pages, then publish the build output rather than the source folder.
-6. Keep all secrets in host environment settings, not in the frontend or Git repository.
+1. Deploy the Express API to a Node-compatible host.
+2. Use a managed MongoDB instance and store its connection string as a server-side secret.
+3. Configure the frontend to call the deployed API over HTTPS.
+4. Configure CORS for the intended frontend origin.
+5. Test token creation, per-service isolation, staff authorization, and wait-time calculations against the hosted services.
 
-## Security
-
-- Replace all example staff passwords and JWT secrets.
-- Do not commit `.env` files.
-- Enforce staff permissions on the backend for every staff-only endpoint.
-- Validate token and service inputs server-side.
-- Treat a frontend-only deployment as a UI demo, not a secured live queueing service.
-
-## Author
-
-**Lomesh Pawar** · [GitHub](https://github.com/lomeshpawar)
+**Security:** Never commit `.env`, JWT secrets, real staff passwords, or database credentials. Frontend UI checks do not replace server-side authorization.
