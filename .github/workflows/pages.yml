@@ -35,8 +35,6 @@ jobs:
       - name: Build static frontend preview
         working-directory: QueueLess/client
         run: npm run build -- --base=/QueueLess/
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
