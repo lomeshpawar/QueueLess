@@ -48,12 +48,11 @@ The system manages 6 dedicated campus service queues:
 - `PATCH /api/tokens/:id/skip` — skip token (JWT required)
 - `PATCH /api/tokens/:id/recall` — return skipped token to waiting (JWT required)
 
-## Automated Tests
-Run the comprehensive test suite verifying service-specific queue isolation, position calculations, and staff operations:
-```powershell
-cd server
-npm test
-```
+## Test status and safety
+
+The current `npm test` script runs a manual API scenario runner. It connects to the local `queueless` MongoDB database and deletes all token records for the current date before running its scenarios.
+
+**Do not run `npm test` against your normal development database or any database containing real or valuable records.** The script is not isolated yet, and there is no safe automated test command in the current repository. Database isolation and a non-destructive test setup are tracked in [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2).
 
 ## Notes
 This is an academic demonstration. The initial staff account is seeded from environment variables. Change the demo password and JWT secret before using this beyond a local demo. Waiting time is calculated per service based on active serving status and average service duration.
