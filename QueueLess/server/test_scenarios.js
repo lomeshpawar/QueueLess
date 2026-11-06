@@ -1,12 +1,13 @@
 import mongoose from 'mongoose';
 import Token from './models/Token.js';
 import { ACTIVE_SERVICES, HISTORICAL_SERVICES, ALL_SERVICES } from './utils/constants.js';
+import { getScenarioTestEnvironment } from './utils/testEnvironment.js';
 
-const API_BASE = 'http://localhost:5000/api';
+const { mongoUri: testMongoUri, staffEmail: testStaffEmail, staffPassword: testStaffPassword, apiBase: API_BASE } = getScenarioTestEnvironment();
 
 async function runTests() {
   console.log('--- STARTING COMPREHENSIVE SCENARIO TESTS ---\n');
-  await mongoose.connect('mongodb://127.0.0.1:27017/queueless');
+  await mongoose.connect(testMongoUri);
   const today = new Date().toISOString().slice(0, 10);
 
   // Clean today's tokens for a controlled test run
@@ -17,7 +18,7 @@ async function runTests() {
   const loginRes = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'staff@queueless.local', password: 'QueueLess@123' })
+    body: JSON.stringify({ email: testStaffEmail, password: testStaffPassword })
   });
   const loginData = await loginRes.json();
   if (!loginRes.ok) throw new Error('Staff login failed: ' + JSON.stringify(loginData));

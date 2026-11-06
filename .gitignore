@@ -6,9 +6,10 @@ node_modules/
 dist/
 */dist/
 
-# Environment and secrets
+# Environment files and secrets
 .env
-.env.local
+.env.*
+!.env.example
 *.env
 
 # Logs and system files
