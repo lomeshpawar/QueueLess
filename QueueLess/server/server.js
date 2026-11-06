@@ -5,8 +5,18 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import tokenRoutes from './routes/tokenRoutes.js';
 import { seedStaff } from './utils/seedStaff.js';
+import { getSecurityConfig } from './utils/securityConfig.js';
 
 dotenv.config();
+
+let securityConfig;
+try {
+  securityConfig = getSecurityConfig();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json({ limit: '1mb' }));
@@ -22,7 +32,7 @@ const port = process.env.PORT || 5000;
 try {
   await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/queueless');
   console.log('Connected to MongoDB');
-  await seedStaff();
+  await seedStaff(securityConfig);
   app.listen(port, () => console.log(`QueueLess API running at http://localhost:${port}`));
 } catch (error) {
   console.error('Startup failed. Is MongoDB running? Details:', error.message);

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "node test_scenarios.js"
+    "test": "node --test",
+    "test:scenarios": "node test_scenarios.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

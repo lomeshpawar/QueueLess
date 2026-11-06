@@ -18,7 +18,7 @@ This Pages deployment publishes the built React/Vite frontend only. Queue genera
 - Public queue snapshot and token lookup
 - Staff login and queue management actions
 - Dashboard statistics
-- Manual backend scenario runner (not yet isolated from normal development data)
+- Backend unit tests and an explicitly isolated manual scenario runner
 
 Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and Idea Lab.
 
@@ -27,7 +27,7 @@ Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and
 - React, Vite, JavaScript
 - Node.js, Express
 - MongoDB, Mongoose
-- Staff authentication and protected backend routes
+- JWT-based staff authentication
 
 ## Run locally
 
@@ -36,27 +36,41 @@ Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and
 ```powershell
 cd QueueLess/server
 Copy-Item .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
-Set unique local secrets and staff credentials in `.env`, then start MongoDB at the configured connection string. The default API port is `5000`.
+Edit `.env` before starting the server. Set a unique `JWT_SECRET` of at least 32 characters, a `STAFF_EMAIL`, and a unique `STAFF_PASSWORD` of at least 12 characters. The example file contains placeholders, not working credentials. The server now refuses to start if these security settings are missing, too short, or left as placeholders.
+
+The default API port is `5000`. Start MongoDB at the configured `MONGODB_URI`.
 
 ### Frontend
 
 ```powershell
 cd QueueLess/client
-npm install
+npm ci
 npm run dev
 ```
 
 Open the local URL shown by Vite, typically `http://localhost:5173`.
 
-### Test status and safety
+## Testing
 
-The current `npm test` script runs a manual API scenario runner. It connects to the local `queueless` MongoDB database and deletes all token records for the current date before running its scenarios.
+From `QueueLess/server`:
 
-**Do not run `npm test` against your normal development database or any database containing real or valuable records.** The script is not isolated yet, and there is no safe automated test command in the current repository. Database isolation and a non-destructive test setup are tracked in [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2).
+```bash
+npm test
+```
+
+This runs database-free Node.js unit tests for security configuration, JWT middleware behavior, and scenario-test environment validation. The CI workflow runs this command.
+
+### Optional API scenario runner
+
+`npm run test:scenarios` runs manual API scenarios and deletes current-day token records from its target database to establish a clean baseline. It now requires `TEST_MONGODB_URI`, `TEST_STAFF_EMAIL`, and `TEST_STAFF_PASSWORD`. The database name in `TEST_MONGODB_URI` must end in `_test`; a normal `queueless` database is rejected.
+
+Use a disposable database such as `mongodb://127.0.0.1:27017/queueless_test`. Start the API separately with `MONGODB_URI` set to that same test database and `STAFF_EMAIL` / `STAFF_PASSWORD` matching the test credentials. Set `TEST_API_BASE` only if the API is not at `http://localhost:5000/api`.
+
+**Never point the scenario runner at a development, staging, or production database.** It intentionally clears today's records in the isolated `_test` database. See [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2) for further test-isolation work.
 
 ## GitHub Pages deployment
 
