@@ -123,6 +123,8 @@ function App() {
           nextSnapshot = staffSnapshot;
           setStats(staffStats);
         } catch {
+          // Never retain a staff snapshot if any authenticated staff request fails.
+          nextSnapshot = publicSnapshot;
           localStorage.removeItem('queueless_staff_token');
           localStorage.removeItem('queueless_staff');
           setStaff(null);
@@ -170,6 +172,17 @@ function App() {
     localStorage.removeItem('queueless_staff_token');
     localStorage.removeItem('queueless_staff');
     setStaff(null);
+    setStats({ total: 0, waiting: 0, serving: 0, served: 0, skipped: 0, byService: {} });
+    setSnapshot({
+      tokens: [],
+      allTokens: [],
+      waiting: [],
+      serving: null,
+      servingByService: {},
+      queueByService: {},
+      avgServiceMinutes: 5,
+      activeServices: SERVICES
+    });
     setPage('overview');
     void loadQueue();
     notify('You have signed out from staff console.');
