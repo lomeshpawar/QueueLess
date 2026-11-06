@@ -18,7 +18,7 @@ This Pages deployment publishes the built React/Vite frontend only. Queue genera
 - Public queue snapshot and token lookup
 - Staff login and queue management actions
 - Dashboard statistics
-- Automated backend tests
+- Manual backend scenario runner (not yet isolated from normal development data)
 
 Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and Idea Lab.
 
@@ -52,12 +52,11 @@ npm run dev
 
 Open the local URL shown by Vite, typically `http://localhost:5173`.
 
-### Tests
+### Test status and safety
 
-```powershell
-cd QueueLess/server
-npm test
-```
+The current `npm test` script runs a manual API scenario runner. It connects to the local `queueless` MongoDB database and deletes all token records for the current date before running its scenarios.
+
+**Do not run `npm test` against your normal development database or any database containing real or valuable records.** The script is not isolated yet, and there is no safe automated test command in the current repository. Database isolation and a non-destructive test setup are tracked in [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2).
 
 ## GitHub Pages deployment
 
