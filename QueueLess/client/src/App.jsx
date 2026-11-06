@@ -113,18 +113,24 @@ function App() {
   const loadQueue = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
-      const { data } = await api.get('/tokens');
-      setSnapshot(data);
+      const { data: publicSnapshot } = await api.get('/tokens');
+      let nextSnapshot = publicSnapshot;
+
       if (localStorage.getItem('queueless_staff_token')) {
         try {
-          const s = await api.get('/tokens/stats');
-          setStats(s.data);
+          const { data: staffSnapshot } = await api.get('/tokens/staff');
+          const { data: staffStats } = await api.get('/tokens/stats');
+          nextSnapshot = staffSnapshot;
+          setStats(staffStats);
         } catch {
           localStorage.removeItem('queueless_staff_token');
           localStorage.removeItem('queueless_staff');
           setStaff(null);
+          setStats({ total: 0, waiting: 0, serving: 0, served: 0, skipped: 0, byService: {} });
         }
       }
+
+      setSnapshot(nextSnapshot);
     } catch {
       /* Handled gracefully */
     } finally {
@@ -254,7 +260,7 @@ function App() {
     return allTokens.filter(t => {
       const isStatusMatch = ['waiting', 'serving'].includes(t.status);
       const isServiceMatch = queueFilter === 'All' || t.service === queueFilter;
-      const isSearchMatch = `${t.tokenNumber} ${t.visitorName} ${t.service}`
+      const isSearchMatch = `${t.tokenNumber} ${staff ? t.visitorName : ''} ${t.service}`
         .toLowerCase()
         .includes(query.toLowerCase());
       return isStatusMatch && isServiceMatch && isSearchMatch;
@@ -498,7 +504,7 @@ function App() {
                     </div>
                     <b>{serving?.tokenNumber || '—'}</b>
                     <span className="sub">
-                      {serving ? `${serving.visitorName} (${serving.service})` : 'All Desks Ready'}
+                      {serving ? serving.service : 'All Desks Ready'}
                     </span>
                   </div>
 
@@ -509,7 +515,7 @@ function App() {
                     </div>
                     <b>{waiting[0]?.tokenNumber || 'Q—'}</b>
                     <span className="sub">
-                      {waiting[0] ? `${waiting[0].visitorName} (${waiting[0].service})` : 'Queue Empty'}
+                      {waiting[0] ? waiting[0].service : 'Queue Empty'}
                     </span>
                   </div>
                 </div>
@@ -596,7 +602,7 @@ function App() {
                       <span className="small-label">CURRENT ACTIVE VISITOR</span>
                       <div className="current-number">{serving?.tokenNumber || '—'}</div>
                       <span className="current-name">
-                        {serving ? `${serving.visitorName} · ${serving.service}` : 'All service counters ready for next student'}
+                        {serving ? `${serving.tokenNumber} · ${serving.service}` : 'All service counters ready for next student'}
                       </span>
                     </div>
                     <div className="serving-badge-icon">
@@ -607,11 +613,11 @@ function App() {
                   {waiting.slice(0, 5).map(t => {
                     const info = getServiceQueueInfo(t, allTokens, average);
                     return (
-                      <div className="queue-row" key={t._id}>
+                      <div className="queue-row" key={t.tokenNumber}>
                         <div className="queue-position-chip">#{info.position}</div>
                         <div className="queue-row-main">
                           <b>
-                            {t.tokenNumber} <span>· {t.visitorName}</span>
+                            {t.tokenNumber}
                           </b>
                           <small>
                             {t.service} · {info.waitMinutes === 0 ? 'No wait' : `~${info.waitMinutes} min est.`}
@@ -838,7 +844,7 @@ function App() {
                     <div className="desk-current-number">{visitorSelectedServiceServing?.tokenNumber || '—'}</div>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--slate-500)' }}>
                       {visitorSelectedServiceServing ? (
-                        <>Currently Serving: <b>{visitorSelectedServiceServing.visitorName}</b></>
+                        <>Currently Serving: <b>{visitorSelectedServiceServing.tokenNumber}</b></>
                       ) : (
                         'Desk is currently idle · Ready for next student'
                       )}
@@ -927,7 +933,7 @@ function App() {
                       </div>
 
                       <div className="track-token-title">{lookupResult.token.tokenNumber}</div>
-                      <h4 className="track-visitor-name">{lookupResult.token.visitorName}</h4>
+                      <h4 className="track-visitor-name">Your token</h4>
                       <div style={{ marginBottom: 14 }}>
                         <span className="service-badge-tag">{lookupResult.token.service}</span>
                       </div>
@@ -1066,8 +1072,8 @@ function App() {
                   }
                   note={
                     queueFilter === 'All'
-                      ? serving ? `${serving.visitorName} (${serving.service})` : 'All desks ready'
-                      : servingByService[queueFilter] ? servingByService[queueFilter].visitorName : 'Desk ready'
+                      ? serving ? serving.service : 'All desks ready'
+                      : servingByService[queueFilter] ? servingByService[queueFilter].service : 'Desk ready'
                   }
                   tone="purple"
                 />
@@ -1124,7 +1130,7 @@ function App() {
                       {liveQueueFiltered.map(t => {
                         const info = getServiceQueueInfo(t, allTokens, average);
                         return (
-                          <tr key={t._id}>
+                          <tr key={t.tokenNumber}>
                             <td>
                               <b className="table-token">{t.tokenNumber}</b>
                             </td>
