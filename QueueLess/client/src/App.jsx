@@ -171,6 +171,7 @@ function App() {
     localStorage.removeItem('queueless_staff');
     setStaff(null);
     setPage('overview');
+    void loadQueue();
     notify('You have signed out from staff console.');
   };
 
@@ -265,7 +266,7 @@ function App() {
         .includes(query.toLowerCase());
       return isStatusMatch && isServiceMatch && isSearchMatch;
     });
-  }, [allTokens, queueFilter, query]);
+  }, [allTokens, queueFilter, query, staff]);
 
   // Selected service tokens for the Staff Console
   const staffTargetService = staffFilter === 'All' ? null : staffFilter;
