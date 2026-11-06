@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -104,6 +104,7 @@ function App() {
 
   const [queueFilter, setQueueFilter] = useState('All');
   const [staffFilter, setStaffFilter] = useState(SERVICES[0]);
+  const queueLoadRequest = useRef(0);
 
   const notify = msg => {
     setToast(msg);
@@ -111,19 +112,33 @@ function App() {
   };
 
   const loadQueue = useCallback(async (isManual = false) => {
+    const requestId = ++queueLoadRequest.current;
+    const staffToken = localStorage.getItem('queueless_staff_token');
     if (isManual) setRefreshing(true);
     try {
       const { data: publicSnapshot } = await api.get('/tokens');
       let nextSnapshot = publicSnapshot;
 
-      if (localStorage.getItem('queueless_staff_token')) {
+      if (staffToken) {
         try {
           const { data: staffSnapshot } = await api.get('/tokens/staff');
           const { data: staffStats } = await api.get('/tokens/stats');
+
+          // Ignore responses from an older request or a session that has since changed.
+          if (
+            requestId !== queueLoadRequest.current ||
+            localStorage.getItem('queueless_staff_token') !== staffToken
+          ) return;
+
           nextSnapshot = staffSnapshot;
           setStats(staffStats);
         } catch {
           // Never retain a staff snapshot if any authenticated staff request fails.
+          if (
+            requestId !== queueLoadRequest.current ||
+            localStorage.getItem('queueless_staff_token') !== staffToken
+          ) return;
+
           nextSnapshot = publicSnapshot;
           localStorage.removeItem('queueless_staff_token');
           localStorage.removeItem('queueless_staff');
@@ -131,6 +146,12 @@ function App() {
           setStats({ total: 0, waiting: 0, serving: 0, served: 0, skipped: 0, byService: {} });
         }
       }
+
+      // Prevent stale public/staff responses from overwriting newer session state.
+      if (
+        requestId !== queueLoadRequest.current ||
+        localStorage.getItem('queueless_staff_token') !== staffToken
+      ) return;
 
       setSnapshot(nextSnapshot);
     } catch {
