@@ -105,6 +105,7 @@ function App() {
   const [queueFilter, setQueueFilter] = useState('All');
   const [staffFilter, setStaffFilter] = useState(SERVICES[0]);
   const queueLoadRequest = useRef(0);
+  const manualRefreshRequest = useRef(0);
 
   const notify = msg => {
     setToast(msg);
@@ -113,6 +114,7 @@ function App() {
 
   const loadQueue = useCallback(async (isManual = false) => {
     const requestId = ++queueLoadRequest.current;
+    const manualRefreshId = isManual ? ++manualRefreshRequest.current : null;
     const staffToken = localStorage.getItem('queueless_staff_token');
     if (isManual) setRefreshing(true);
     try {
@@ -157,8 +159,12 @@ function App() {
     } catch {
       /* Handled gracefully */
     } finally {
-      if (isManual) {
-        window.setTimeout(() => setRefreshing(false), 400);
+      if (isManual && manualRefreshId === manualRefreshRequest.current) {
+        window.setTimeout(() => {
+          if (manualRefreshId === manualRefreshRequest.current) {
+            setRefreshing(false);
+          }
+        }, 400);
       }
     }
   }, []);
