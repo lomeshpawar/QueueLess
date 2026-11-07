@@ -23,5 +23,6 @@ test('accepts local and hosted MongoDB connection URIs', () => {
   const hostedUri = 'mongodb+srv://cluster.example.mongodb.net/queueless';
 
   assert.equal(getMongoUri({ MONGODB_URI: localUri }), localUri);
+  assert.equal(getMongoUri({ MONGODB_URI: `  ${localUri}  ` }), localUri);
   assert.equal(getMongoUri({ MONGODB_URI: hostedUri }), hostedUri);
 });
