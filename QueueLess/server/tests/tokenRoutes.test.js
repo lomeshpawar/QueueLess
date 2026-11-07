@@ -61,6 +61,7 @@ test('public token routes omit private fields and staff snapshot requires a vali
   Token.countDocuments = async () => 0;
 
   const app = express();
+  app.locals.averageServiceMinutes = 7.5;
   app.use('/api/tokens', tokenRoutes);
   const server = createServer(app);
 
@@ -77,6 +78,7 @@ test('public token routes omit private fields and staff snapshot requires a vali
     assert.equal(publicSnapshotResponse.status, 200);
     const publicSnapshot = await publicSnapshotResponse.json();
     assertNoPrivateTokenFields(publicSnapshot);
+    assert.equal(publicSnapshot.avgServiceMinutes, 7.5);
 
     const publicLookupResponse = await fetch(`${baseUrl}/mine/Q001`);
     assert.equal(publicLookupResponse.status, 200);
@@ -101,6 +103,7 @@ test('public token routes omit private fields and staff snapshot requires a vali
     });
     assert.equal(staffResponse.status, 200);
     const staffSnapshot = await staffResponse.json();
+    assert.equal(staffSnapshot.avgServiceMinutes, 7.5);
     assert.equal(staffSnapshot.tokens[0].visitorName, 'Private Visitor');
     assert.equal(staffSnapshot.tokens[0]._id, 'internal-mongo-id');
     assert.ok(findCalls >= 2);
