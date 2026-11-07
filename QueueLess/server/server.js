@@ -6,12 +6,15 @@ import authRoutes from './routes/authRoutes.js';
 import tokenRoutes from './routes/tokenRoutes.js';
 import { seedStaff } from './utils/seedStaff.js';
 import { getSecurityConfig } from './utils/securityConfig.js';
+import { getMongoUri } from './utils/mongoConfig.js';
 
 dotenv.config();
 
 let securityConfig;
+let mongoUri;
 try {
   securityConfig = getSecurityConfig();
+  mongoUri = getMongoUri();
 } catch (error) {
   console.error(error.message);
   process.exit(1);
@@ -30,7 +33,7 @@ app.use((err, _req, res, _next) => {
 
 const port = process.env.PORT || 5000;
 try {
-  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/queueless');
+  await mongoose.connect(mongoUri);
   console.log('Connected to MongoDB');
   await seedStaff(securityConfig);
   app.listen(port, () => console.log(`QueueLess API running at http://localhost:${port}`));
