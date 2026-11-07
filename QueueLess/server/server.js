@@ -7,20 +7,24 @@ import tokenRoutes from './routes/tokenRoutes.js';
 import { seedStaff } from './utils/seedStaff.js';
 import { getSecurityConfig } from './utils/securityConfig.js';
 import { getMongoUri } from './utils/mongoConfig.js';
+import { getAverageServiceMinutes } from './utils/serviceTimeConfig.js';
 
 dotenv.config();
 
 let securityConfig;
 let mongoUri;
+let averageServiceMinutes;
 try {
   securityConfig = getSecurityConfig();
   mongoUri = getMongoUri();
+  averageServiceMinutes = getAverageServiceMinutes();
 } catch (error) {
   console.error(error.message);
   process.exit(1);
 }
 
 const app = express();
+app.locals.averageServiceMinutes = averageServiceMinutes;
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json({ limit: '1mb' }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'QueueLess API' }));
