@@ -14,7 +14,7 @@ test('rejects malformed or unsupported database URIs', () => {
   );
   assert.throws(
     () => getMongoUri({ MONGODB_URI: 'mongodb://' }),
-    /valid MongoDB connection URI/
+    /include a host/
   );
 });
 
