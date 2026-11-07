@@ -40,7 +40,7 @@ npm ci
 npm run dev
 ```
 
-Edit `.env` before starting the server. Set an explicit `MONGODB_URI` for your local or managed database, a unique `JWT_SECRET` of at least 32 characters, a valid `STAFF_EMAIL`, and a unique `STAFF_PASSWORD` of at least 12 characters. The example file contains placeholders, not working credentials. The server refuses to start if the MongoDB URI is missing or malformed, or if the security settings are missing, too short, or left as placeholders. The example URI targets local development only; replace it for a hosted deployment.
+Edit `.env` before starting the server. Set a unique `JWT_SECRET` of at least 32 characters, a `STAFF_EMAIL`, a unique `STAFF_PASSWORD` of at least 12 characters, and an explicit `MONGODB_URI`. The example file supplies a localhost MongoDB URI for local development; replace it with the connection string for your chosen database. The server refuses to start if the MongoDB URI is missing, malformed, or uses an unsupported scheme. Production deployments must provide their managed database URI through the hosting provider's server-side environment settings.
 
 The default API port is `5000`.
 
@@ -62,7 +62,7 @@ From `QueueLess/server`:
 npm test
 ```
 
-This runs database-free Node.js unit tests for security configuration, JWT middleware behavior, and scenario-test environment validation. The CI workflow runs this command.
+This runs database-free Node.js unit tests for security configuration, MongoDB URI validation, JWT middleware behavior, and scenario-test environment validation. GitHub Actions runs this command.
 
 ### Optional API scenario runner
 
@@ -79,7 +79,7 @@ The workflow in `.github/workflows/pages.yml` builds `QueueLess/client` with the
 ## For a full public deployment
 
 1. Deploy the Express API to a Node-compatible host.
-2. Use a managed MongoDB instance and store its connection string as a server-side secret.
+2. Use a managed MongoDB instance and store the connection string as a server-side secret.
 3. Configure the frontend to call the deployed API over HTTPS.
 4. Configure CORS for the intended frontend origin.
 5. Test token creation, per-service isolation, staff authorization, and wait-time calculations against the hosted services.
