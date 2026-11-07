@@ -42,7 +42,7 @@ test('public token routes omit private fields and staff snapshot requires a vali
     tokenNumber: 'Q001',
     visitorName: 'Private Visitor',
     service: 'Accounts',
-    status: 'served',
+    status: 'waiting',
     createdAt: new Date('2026-11-06T10:00:00.000Z'),
     calledAt: new Date('2026-11-06T10:05:00.000Z'),
     completedAt: new Date('2026-11-06T10:10:00.000Z'),
@@ -57,8 +57,10 @@ test('public token routes omit private fields and staff snapshot requires a vali
       async lean() { return fixture; }
     };
   };
-  Token.findOne = async () => fixture[0];
-  Token.countDocuments = async () => 0;
+  Token.findOne = async query => query.status === 'serving'
+    ? { status: 'serving', calledAt: null }
+    : fixture[0];
+  Token.countDocuments = async () => 1;
 
   const app = express();
   app.locals.averageServiceMinutes = 7.5;
@@ -84,6 +86,7 @@ test('public token routes omit private fields and staff snapshot requires a vali
     assert.equal(publicLookupResponse.status, 200);
     const publicLookup = await publicLookupResponse.json();
     assertNoPrivateTokenFields(publicLookup);
+    assert.equal(publicLookup.estimatedWaitMinutes, 15);
 
     const anonymousStaffResponse = await fetch(`${baseUrl}/staff`);
     assert.equal(anonymousStaffResponse.status, 401);
@@ -106,6 +109,13 @@ test('public token routes omit private fields and staff snapshot requires a vali
     assert.equal(staffSnapshot.avgServiceMinutes, 7.5);
     assert.equal(staffSnapshot.tokens[0].visitorName, 'Private Visitor');
     assert.equal(staffSnapshot.tokens[0]._id, 'internal-mongo-id');
+
+    const statsResponse = await fetch(`${baseUrl}/stats`, {
+      headers: { Authorization: `Bearer ${staffToken}` }
+    });
+    assert.equal(statsResponse.status, 200);
+    const stats = await statsResponse.json();
+    assert.equal(stats.avgServiceMinutes, 7.5);
     assert.ok(findCalls >= 2);
   } finally {
     await new Promise(resolve => server.close(resolve));
