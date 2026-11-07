@@ -40,9 +40,9 @@ npm ci
 npm run dev
 ```
 
-Edit `.env` before starting the server. Set a unique `JWT_SECRET` of at least 32 characters, a `STAFF_EMAIL`, and a unique `STAFF_PASSWORD` of at least 12 characters. The example file contains placeholders, not working credentials. The server now refuses to start if these security settings are missing, too short, or left as placeholders.
+Edit `.env` before starting the server. Set an explicit `MONGODB_URI` for your local or managed database, a unique `JWT_SECRET` of at least 32 characters, a valid `STAFF_EMAIL`, and a unique `STAFF_PASSWORD` of at least 12 characters. The example file contains placeholders, not working credentials. The server refuses to start if the MongoDB URI is missing or malformed, or if the security settings are missing, too short, or left as placeholders. The example URI targets local development only; replace it for a hosted deployment.
 
-The default API port is `5000`. Start MongoDB at the configured `MONGODB_URI`.
+The default API port is `5000`.
 
 ### Frontend
 
