@@ -9,7 +9,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 const avgMinutes = () => Math.max(1, Number(process.env.AVG_SERVICE_MINUTES || 5));
 
 // Public snapshot used by visitor and queue-display pages.
-function buildQueueSnapshot(tokens, serviceFilter) {
+function configuredAverageServiceMinutes(req) {
+  return req.app.locals.averageServiceMinutes ?? avgMinutes(req);
+}
+
+function buildQueueSnapshot(tokens, serviceFilter, averageServiceMinutes) {
   const servingByService = {};
   const queueByService = {};
 
@@ -41,7 +45,7 @@ function buildQueueSnapshot(tokens, serviceFilter) {
     serving,
     servingByService,
     queueByService,
-    avgServiceMinutes: avgMinutes(),
+    avgServiceMinutes: averageServiceMinutes,
     activeServices: ACTIVE_SERVICES
   };
 }
@@ -50,7 +54,7 @@ function buildQueueSnapshot(tokens, serviceFilter) {
 router.get('/', async (req, res, next) => {
   try {
     const tokens = await Token.find({ queueDate: today() }).sort({ createdAt: 1 }).lean();
-    res.json(buildQueueSnapshot(tokens.map(toPublicToken), req.query.service));
+    res.json(buildQueueSnapshot(tokens.map(toPublicToken), req.query.service, configuredAverageServiceMinutes(req)));
   } catch (error) { next(error); }
 });
 
@@ -58,7 +62,7 @@ router.get('/', async (req, res, next) => {
 router.get('/staff', requireAuth, async (req, res, next) => {
   try {
     const tokens = await Token.find({ queueDate: today() }).sort({ createdAt: 1 }).lean();
-    res.json(buildQueueSnapshot(tokens, req.query.service));
+    res.json(buildQueueSnapshot(tokens, req.query.service, configuredAverageServiceMinutes(req)));
   } catch (error) { next(error); }
 });
 
