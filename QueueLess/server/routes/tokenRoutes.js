@@ -103,7 +103,7 @@ router.post('/', async (req, res, next) => {
 
     const peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
     const queuePosition = peopleAhead + 1;
-    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, configuredAverageServiceMinutes(req));
 
     res.status(201).json({
       token,
@@ -143,7 +143,7 @@ router.get('/mine/:tokenNumber', async (req, res, next) => {
 
       peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
       queuePosition = peopleAhead + 1;
-      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, configuredAverageServiceMinutes(req));
     } else if (token.status === 'serving') {
       peopleAhead = 0;
       queuePosition = 1;
@@ -187,7 +187,7 @@ router.get('/stats', requireAuth, async (req, res, next) => {
       serving: targetTokens.filter(t => t.status === 'serving').length,
       served: targetTokens.filter(t => t.status === 'served').length,
       skipped: targetTokens.filter(t => t.status === 'skipped').length,
-      avgServiceMinutes: avgMinutes(),
+      avgServiceMinutes: configuredAverageServiceMinutes(req),
       byService
     });
   } catch (error) { next(error); }
