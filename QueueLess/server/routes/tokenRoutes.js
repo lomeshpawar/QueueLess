@@ -2,51 +2,67 @@ import { Router } from 'express';
 import Token from '../models/Token.js';
 import requireAuth from '../middleware/requireAuth.js';
 import { ACTIVE_SERVICES, ALL_SERVICES, calculateEstimatedWaitMinutes } from '../utils/constants.js';
+import { toPublicToken } from '../utils/tokenDto.js';
 
 const router = Router();
 const today = () => new Date().toISOString().slice(0, 10);
 const avgMinutes = () => Math.max(1, Number(process.env.AVG_SERVICE_MINUTES || 5));
 
 // Public snapshot used by visitor and queue-display pages.
+function configuredAverageServiceMinutes(req) {
+  return req.app.locals.averageServiceMinutes ?? avgMinutes(req);
+}
+
+function buildQueueSnapshot(tokens, serviceFilter, averageServiceMinutes) {
+  const servingByService = {};
+  const queueByService = {};
+
+  for (const service of ACTIVE_SERVICES) {
+    const serviceTokens = tokens.filter(token => token.service === service);
+    const servingToken = serviceTokens.find(token => token.status === 'serving') || null;
+    const waitingTokens = serviceTokens.filter(token => token.status === 'waiting');
+
+    servingByService[service] = servingToken;
+    queueByService[service] = {
+      waiting: waitingTokens,
+      serving: servingToken,
+      waitingCount: waitingTokens.length
+    };
+  }
+
+  const filteredTokens = (serviceFilter && ALL_SERVICES.includes(serviceFilter))
+    ? tokens.filter(token => token.service === serviceFilter)
+    : tokens;
+  const waiting = filteredTokens.filter(token => token.status === 'waiting');
+  const serving = (serviceFilter && ALL_SERVICES.includes(serviceFilter))
+    ? (servingByService[serviceFilter] || null)
+    : (tokens.find(token => token.status === 'serving') || null);
+
+  return {
+    tokens: filteredTokens,
+    allTokens: tokens,
+    waiting,
+    serving,
+    servingByService,
+    queueByService,
+    avgServiceMinutes: averageServiceMinutes,
+    activeServices: ACTIVE_SERVICES
+  };
+}
+
+// Public snapshot contains queue-operational fields only; visitor details stay private.
 router.get('/', async (req, res, next) => {
   try {
-    const date = today();
-    const serviceFilter = req.query.service;
-    const tokens = await Token.find({ queueDate: date }).sort({ createdAt: 1 }).lean();
+    const tokens = await Token.find({ queueDate: today() }).sort({ createdAt: 1 }).lean();
+    res.json(buildQueueSnapshot(tokens.map(toPublicToken), req.query.service, configuredAverageServiceMinutes(req)));
+  } catch (error) { next(error); }
+});
 
-    // Group active queues per service
-    const servingByService = {};
-    const queueByService = {};
-    for (const s of ACTIVE_SERVICES) {
-      const sTokens = tokens.filter(t => t.service === s);
-      const sServing = sTokens.find(t => t.status === 'serving') || null;
-      const sWaiting = sTokens.filter(t => t.status === 'waiting');
-      servingByService[s] = sServing;
-      queueByService[s] = {
-        waiting: sWaiting,
-        serving: sServing,
-        waitingCount: sWaiting.length
-      };
-    }
-
-    const filteredTokens = (serviceFilter && ALL_SERVICES.includes(serviceFilter))
-      ? tokens.filter(t => t.service === serviceFilter)
-      : tokens;
-    const waiting = filteredTokens.filter(t => t.status === 'waiting');
-    const serving = (serviceFilter && ALL_SERVICES.includes(serviceFilter))
-      ? (servingByService[serviceFilter] || null)
-      : (tokens.find(t => t.status === 'serving') || null);
-
-    res.json({
-      tokens: filteredTokens,
-      allTokens: tokens,
-      waiting,
-      serving,
-      servingByService,
-      queueByService,
-      avgServiceMinutes: avgMinutes(),
-      activeServices: ACTIVE_SERVICES
-    });
+// Full visitor details are available only to authenticated staff.
+router.get('/staff', requireAuth, async (req, res, next) => {
+  try {
+    const tokens = await Token.find({ queueDate: today() }).sort({ createdAt: 1 }).lean();
+    res.json(buildQueueSnapshot(tokens, req.query.service, configuredAverageServiceMinutes(req)));
   } catch (error) { next(error); }
 });
 
@@ -87,7 +103,7 @@ router.post('/', async (req, res, next) => {
 
     const peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
     const queuePosition = peopleAhead + 1;
-    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, configuredAverageServiceMinutes(req));
 
     res.status(201).json({
       token,
@@ -127,7 +143,7 @@ router.get('/mine/:tokenNumber', async (req, res, next) => {
 
       peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
       queuePosition = peopleAhead + 1;
-      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, configuredAverageServiceMinutes(req));
     } else if (token.status === 'serving') {
       peopleAhead = 0;
       queuePosition = 1;
@@ -135,7 +151,7 @@ router.get('/mine/:tokenNumber', async (req, res, next) => {
     }
 
     res.json({
-      token,
+      token: toPublicToken(token),
       service: token.service,
       peopleAhead,
       queuePosition,
@@ -171,7 +187,7 @@ router.get('/stats', requireAuth, async (req, res, next) => {
       serving: targetTokens.filter(t => t.status === 'serving').length,
       served: targetTokens.filter(t => t.status === 'served').length,
       skipped: targetTokens.filter(t => t.status === 'skipped').length,
-      avgServiceMinutes: avgMinutes(),
+      avgServiceMinutes: configuredAverageServiceMinutes(req),
       byService
     });
   } catch (error) { next(error); }
