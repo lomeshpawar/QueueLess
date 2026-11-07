@@ -22,6 +22,14 @@ This Pages deployment publishes the built React/Vite frontend only. Queue genera
 
 Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and Idea Lab.
 
+## Public data and staff access
+
+- Public queue snapshots and token lookups return only the fields needed for queue operation: token number, service, status, and queue timing/date fields.
+- Public responses omit visitor names and internal MongoDB document identifiers.
+- The staff-only `GET /api/tokens/staff` endpoint requires a valid JWT and is used to retrieve visitor details for the staff dashboard.
+- Staff statistics and queue-management actions also require server-side JWT verification.
+- The token-creation response is returned to the request that submitted the token; it is not a substitute for the restricted staff snapshot.
+
 ## Stack
 
 - React, Vite, JavaScript

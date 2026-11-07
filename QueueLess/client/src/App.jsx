@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -104,6 +104,8 @@ function App() {
 
   const [queueFilter, setQueueFilter] = useState('All');
   const [staffFilter, setStaffFilter] = useState(SERVICES[0]);
+  const queueLoadRequest = useRef(0);
+  const manualRefreshRequest = useRef(0);
 
   const notify = msg => {
     setToast(msg);
@@ -111,25 +113,58 @@ function App() {
   };
 
   const loadQueue = useCallback(async (isManual = false) => {
+    const requestId = ++queueLoadRequest.current;
+    const manualRefreshId = isManual ? ++manualRefreshRequest.current : null;
+    const staffToken = localStorage.getItem('queueless_staff_token');
     if (isManual) setRefreshing(true);
     try {
-      const { data } = await api.get('/tokens');
-      setSnapshot(data);
-      if (localStorage.getItem('queueless_staff_token')) {
+      const { data: publicSnapshot } = await api.get('/tokens');
+      let nextSnapshot = publicSnapshot;
+
+      if (staffToken) {
         try {
-          const s = await api.get('/tokens/stats');
-          setStats(s.data);
+          const { data: staffSnapshot } = await api.get('/tokens/staff');
+          const { data: staffStats } = await api.get('/tokens/stats');
+
+          // Ignore responses from an older request or a session that has since changed.
+          if (
+            requestId !== queueLoadRequest.current ||
+            localStorage.getItem('queueless_staff_token') !== staffToken
+          ) return;
+
+          nextSnapshot = staffSnapshot;
+          setStats(staffStats);
         } catch {
+          // Never retain a staff snapshot if any authenticated staff request fails.
+          if (
+            requestId !== queueLoadRequest.current ||
+            localStorage.getItem('queueless_staff_token') !== staffToken
+          ) return;
+
+          nextSnapshot = publicSnapshot;
           localStorage.removeItem('queueless_staff_token');
           localStorage.removeItem('queueless_staff');
           setStaff(null);
+          setStats({ total: 0, waiting: 0, serving: 0, served: 0, skipped: 0, byService: {} });
         }
       }
+
+      // Prevent stale public/staff responses from overwriting newer session state.
+      if (
+        requestId !== queueLoadRequest.current ||
+        localStorage.getItem('queueless_staff_token') !== staffToken
+      ) return;
+
+      setSnapshot(nextSnapshot);
     } catch {
       /* Handled gracefully */
     } finally {
-      if (isManual) {
-        window.setTimeout(() => setRefreshing(false), 400);
+      if (isManual && manualRefreshId === manualRefreshRequest.current) {
+        window.setTimeout(() => {
+          if (manualRefreshId === manualRefreshRequest.current) {
+            setRefreshing(false);
+          }
+        }, 400);
       }
     }
   }, []);
@@ -164,7 +199,19 @@ function App() {
     localStorage.removeItem('queueless_staff_token');
     localStorage.removeItem('queueless_staff');
     setStaff(null);
+    setStats({ total: 0, waiting: 0, serving: 0, served: 0, skipped: 0, byService: {} });
+    setSnapshot({
+      tokens: [],
+      allTokens: [],
+      waiting: [],
+      serving: null,
+      servingByService: {},
+      queueByService: {},
+      avgServiceMinutes: 5,
+      activeServices: SERVICES
+    });
     setPage('overview');
+    void loadQueue();
     notify('You have signed out from staff console.');
   };
 
@@ -254,12 +301,12 @@ function App() {
     return allTokens.filter(t => {
       const isStatusMatch = ['waiting', 'serving'].includes(t.status);
       const isServiceMatch = queueFilter === 'All' || t.service === queueFilter;
-      const isSearchMatch = `${t.tokenNumber} ${t.visitorName} ${t.service}`
+      const isSearchMatch = `${t.tokenNumber} ${staff ? t.visitorName : ''} ${t.service}`
         .toLowerCase()
         .includes(query.toLowerCase());
       return isStatusMatch && isServiceMatch && isSearchMatch;
     });
-  }, [allTokens, queueFilter, query]);
+  }, [allTokens, queueFilter, query, staff]);
 
   // Selected service tokens for the Staff Console
   const staffTargetService = staffFilter === 'All' ? null : staffFilter;
@@ -498,7 +545,7 @@ function App() {
                     </div>
                     <b>{serving?.tokenNumber || '—'}</b>
                     <span className="sub">
-                      {serving ? `${serving.visitorName} (${serving.service})` : 'All Desks Ready'}
+                      {serving ? serving.service : 'All Desks Ready'}
                     </span>
                   </div>
 
@@ -509,7 +556,7 @@ function App() {
                     </div>
                     <b>{waiting[0]?.tokenNumber || 'Q—'}</b>
                     <span className="sub">
-                      {waiting[0] ? `${waiting[0].visitorName} (${waiting[0].service})` : 'Queue Empty'}
+                      {waiting[0] ? waiting[0].service : 'Queue Empty'}
                     </span>
                   </div>
                 </div>
@@ -596,7 +643,7 @@ function App() {
                       <span className="small-label">CURRENT ACTIVE VISITOR</span>
                       <div className="current-number">{serving?.tokenNumber || '—'}</div>
                       <span className="current-name">
-                        {serving ? `${serving.visitorName} · ${serving.service}` : 'All service counters ready for next student'}
+                        {serving ? `${serving.tokenNumber} · ${serving.service}` : 'All service counters ready for next student'}
                       </span>
                     </div>
                     <div className="serving-badge-icon">
@@ -607,11 +654,11 @@ function App() {
                   {waiting.slice(0, 5).map(t => {
                     const info = getServiceQueueInfo(t, allTokens, average);
                     return (
-                      <div className="queue-row" key={t._id}>
+                      <div className="queue-row" key={t.tokenNumber}>
                         <div className="queue-position-chip">#{info.position}</div>
                         <div className="queue-row-main">
                           <b>
-                            {t.tokenNumber} <span>· {t.visitorName}</span>
+                            {t.tokenNumber}
                           </b>
                           <small>
                             {t.service} · {info.waitMinutes === 0 ? 'No wait' : `~${info.waitMinutes} min est.`}
@@ -838,7 +885,7 @@ function App() {
                     <div className="desk-current-number">{visitorSelectedServiceServing?.tokenNumber || '—'}</div>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--slate-500)' }}>
                       {visitorSelectedServiceServing ? (
-                        <>Currently Serving: <b>{visitorSelectedServiceServing.visitorName}</b></>
+                        <>Currently Serving: <b>{visitorSelectedServiceServing.tokenNumber}</b></>
                       ) : (
                         'Desk is currently idle · Ready for next student'
                       )}
@@ -927,7 +974,7 @@ function App() {
                       </div>
 
                       <div className="track-token-title">{lookupResult.token.tokenNumber}</div>
-                      <h4 className="track-visitor-name">{lookupResult.token.visitorName}</h4>
+                      <h4 className="track-visitor-name">Your token</h4>
                       <div style={{ marginBottom: 14 }}>
                         <span className="service-badge-tag">{lookupResult.token.service}</span>
                       </div>
@@ -1066,8 +1113,8 @@ function App() {
                   }
                   note={
                     queueFilter === 'All'
-                      ? serving ? `${serving.visitorName} (${serving.service})` : 'All desks ready'
-                      : servingByService[queueFilter] ? servingByService[queueFilter].visitorName : 'Desk ready'
+                      ? serving ? serving.service : 'All desks ready'
+                      : servingByService[queueFilter] ? servingByService[queueFilter].service : 'Desk ready'
                   }
                   tone="purple"
                 />
@@ -1124,7 +1171,7 @@ function App() {
                       {liveQueueFiltered.map(t => {
                         const info = getServiceQueueInfo(t, allTokens, average);
                         return (
-                          <tr key={t._id}>
+                          <tr key={t.tokenNumber}>
                             <td>
                               <b className="table-token">{t.tokenNumber}</b>
                             </td>
