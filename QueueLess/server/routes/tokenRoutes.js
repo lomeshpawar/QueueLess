@@ -2,10 +2,11 @@ import { Router } from 'express';
 import Token from '../models/Token.js';
 import requireAuth from '../middleware/requireAuth.js';
 import { ACTIVE_SERVICES, ALL_SERVICES, calculateEstimatedWaitMinutes } from '../utils/constants.js';
+import { getAverageServiceMinutes } from '../utils/serviceTimeConfig.js';
 
 const router = Router();
 const today = () => new Date().toISOString().slice(0, 10);
-const avgMinutes = () => Math.max(1, Number(process.env.AVG_SERVICE_MINUTES || 5));
+const avgMinutes = req => req.app.locals.averageServiceMinutes ?? getAverageServiceMinutes();
 
 // Public snapshot used by visitor and queue-display pages.
 router.get('/', async (req, res, next) => {
@@ -44,7 +45,7 @@ router.get('/', async (req, res, next) => {
       serving,
       servingByService,
       queueByService,
-      avgServiceMinutes: avgMinutes(),
+      avgServiceMinutes: averageServiceMinutes,
       activeServices: ACTIVE_SERVICES
     });
   } catch (error) { next(error); }
@@ -87,7 +88,7 @@ router.post('/', async (req, res, next) => {
 
     const peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
     const queuePosition = peopleAhead + 1;
-    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+    const estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes(req));
 
     res.status(201).json({
       token,
@@ -127,7 +128,7 @@ router.get('/mine/:tokenNumber', async (req, res, next) => {
 
       peopleAhead = (servingToken ? 1 : 0) + waitingAhead;
       queuePosition = peopleAhead + 1;
-      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes());
+      estimatedWaitMinutes = calculateEstimatedWaitMinutes(waitingAhead, servingToken, avgMinutes(req));
     } else if (token.status === 'serving') {
       peopleAhead = 0;
       queuePosition = 1;
@@ -171,7 +172,7 @@ router.get('/stats', requireAuth, async (req, res, next) => {
       serving: targetTokens.filter(t => t.status === 'serving').length,
       served: targetTokens.filter(t => t.status === 'served').length,
       skipped: targetTokens.filter(t => t.status === 'skipped').length,
-      avgServiceMinutes: avgMinutes(),
+      avgServiceMinutes: avgMinutes(req),
       byService
     });
   } catch (error) { next(error); }
