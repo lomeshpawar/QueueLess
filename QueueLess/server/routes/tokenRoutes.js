@@ -45,7 +45,7 @@ router.get('/', async (req, res, next) => {
       serving,
       servingByService,
       queueByService,
-      avgServiceMinutes: averageServiceMinutes,
+      avgServiceMinutes: avgMinutes(req),
       activeServices: ACTIVE_SERVICES
     });
   } catch (error) { next(error); }
