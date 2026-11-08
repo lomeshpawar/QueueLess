@@ -22,6 +22,11 @@ This Pages deployment publishes the built React/Vite frontend only. Queue genera
 
 Services: General Enquiry, Exam Section, Accounts, Library, College Canteen, and Idea Lab.
 
+## Known security limitation
+
+The current `main` branch returns full token documents from the public queue snapshot and token-lookup endpoints. Those responses include visitor names and internal MongoDB identifiers; token numbers are not an authorization boundary. Do not use real visitor information or expose this backend publicly until public responses are reduced to a minimal DTO and visitor details are protected. See [issue #1](https://github.com/lomeshpawar/QueueLess/issues/1) and [PR #7](https://github.com/lomeshpawar/QueueLess/pull/7), which is still under review and has not been merged.
+
+
 ## Stack
 
 - React, Vite, JavaScript
