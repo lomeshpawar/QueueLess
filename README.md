@@ -67,7 +67,7 @@ From `QueueLess/server`:
 npm test
 ```
 
-This runs database-free Node.js unit tests for security configuration, MongoDB URI validation, JWT middleware behavior, and scenario-test environment validation. GitHub Actions runs this command.
+This runs database-free Node.js unit tests for security configuration, MongoDB URI validation, JWT middleware behavior, scenario-test environment validation, and average-service-time configuration validation (including invalid and non-finite values). GitHub Actions runs this command.
 
 ### Optional API scenario runner
 
