@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
+import { randomUUID } from 'node:crypto';
 import Token from './models/Token.js';
-import { ACTIVE_SERVICES, HISTORICAL_SERVICES, ALL_SERVICES } from './utils/constants.js';
+import { ACTIVE_SERVICES } from './utils/constants.js';
 import { getScenarioTestEnvironment } from './utils/testEnvironment.js';
+import { assertScenarioDatabaseIsEmpty, getOwnedTokenCleanupFilter } from './utils/scenarioTestSafety.js';
 
 const { mongoUri: testMongoUri, staffEmail: testStaffEmail, staffPassword: testStaffPassword, apiBase: API_BASE } = getScenarioTestEnvironment();
 
@@ -9,10 +11,12 @@ async function runTests() {
   console.log('--- STARTING COMPREHENSIVE SCENARIO TESTS ---\n');
   await mongoose.connect(testMongoUri);
   const today = new Date().toISOString().slice(0, 10);
+  const createdTokenIds = new Set();
 
-  // Clean today's tokens for a controlled test run
-  await Token.deleteMany({ queueDate: today });
-  console.log('Cleared existing tokens for today to ensure clean baseline.\n');
+  try {
+    const existingTodayTokenCount = await Token.countDocuments({ queueDate: today });
+    assertScenarioDatabaseIsEmpty(existingTodayTokenCount);
+    console.log('Scenario database is clear for today; existing records will not be deleted.\n');
 
   // Login as staff
   const loginRes = await fetch(`${API_BASE}/auth/login`, {
@@ -38,6 +42,13 @@ async function runTests() {
       body: JSON.stringify({ visitorName, service })
     });
     const data = await res.json();
+    if (res.ok) {
+      const tokenId = data?.token?._id;
+      if (!tokenId) {
+        throw new Error('Token creation returned no document ID; safe cleanup cannot be guaranteed.');
+      }
+      createdTokenIds.add(String(tokenId));
+    }
     return { ok: res.ok, status: res.status, data };
   }
 
@@ -208,15 +219,15 @@ async function runTests() {
 
   // SCENARIO 10: Frontend, Backend, and MongoDB work together without breaking existing features
   console.log('Test Scenario 10: Full stack & historical compatibility verification');
-  // Test historical record in MongoDB
-  await Token.deleteMany({ tokenNumber: 'HIST-001', queueDate: '2026-01-01' });
+  // Test a uniquely identified historical record without deleting existing data.
   const historical = await Token.create({
-    tokenNumber: 'HIST-001',
+    tokenNumber: `HIST-${randomUUID()}`,
     visitorName: 'Historical Visitor',
     service: 'Student Office',
     status: 'served',
     queueDate: '2026-01-01'
   });
+  createdTokenIds.add(String(historical._id));
   const loadedHist = await Token.findById(historical._id);
   if (!loadedHist || loadedHist.service !== 'Student Office') {
     throw new Error('Scenario 10 Failed: Historical record broken');
@@ -240,7 +251,18 @@ async function runTests() {
   console.log('  Stats API provides granular per-service metrics.');
   console.log('  PASSED\n');
 
-  await mongoose.disconnect();
+  } finally {
+    try {
+      const cleanupFilter = getOwnedTokenCleanupFilter([...createdTokenIds]);
+      if (cleanupFilter) {
+        const cleanupResult = await Token.deleteMany(cleanupFilter);
+        console.log(`Cleaned up ${cleanupResult.deletedCount} scenario-owned token(s).\n`);
+      }
+    } finally {
+      await mongoose.disconnect();
+    }
+  }
+
   console.log('====================================================');
   console.log('ALL 10 VERIFICATION SCENARIOS PASSED WITH ZERO ERRORS');
   console.log('====================================================');

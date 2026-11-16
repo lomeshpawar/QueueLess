@@ -71,11 +71,11 @@ This runs database-free Node.js unit tests for security configuration, MongoDB U
 
 ### Optional API scenario runner
 
-`npm run test:scenarios` runs manual API scenarios and deletes current-day token records from its target database to establish a clean baseline. It now requires `TEST_MONGODB_URI`, `TEST_STAFF_EMAIL`, and `TEST_STAFF_PASSWORD`. The database name in `TEST_MONGODB_URI` must end in `_test`; a normal `queueless` database is rejected.
+`npm run test:scenarios` runs manual API scenarios against a separately running API server and an explicitly configured disposable database. It requires `TEST_MONGODB_URI`, `TEST_STAFF_EMAIL`, and `TEST_STAFF_PASSWORD`. The database name in `TEST_MONGODB_URI` must end in `_test`; a normal `queueless` database is rejected. Before creating data, the runner refuses to continue if the test database already contains tokens for the current date. It never clears existing queue records. During the run it records the IDs of tokens it creates and removes only those records in a `finally` cleanup; the historical fixture uses a unique ID and is cleaned up the same way.
 
-Use a disposable database such as `mongodb://127.0.0.1:27017/queueless_test`. Start the API separately with `MONGODB_URI` set to that same test database and `STAFF_EMAIL` / `STAFF_PASSWORD` matching the test credentials. Set `TEST_API_BASE` only if the API is not at `http://localhost:5000/api`.
+Use a disposable database such as `mongodb://127.0.0.1:27017/queueless_test`. Configure the API server's `MONGODB_URI` to the exact same database, and set `STAFF_EMAIL` / `STAFF_PASSWORD` to the test staff account. Set `TEST_API_BASE` only if the API is not at `http://localhost:5000/api`.
 
-**Never point the scenario runner at a development, staging, or production database.** It intentionally clears today's records in the isolated `_test` database. See [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2) for further test-isolation work.
+**Never point the scenario runner at a development, staging, or production database.** The runner does not start the API server or verify that the server uses the same database, so confirm both settings before running it. If the test database already has current-day tokens, the runner stops rather than deleting them; use a fresh disposable `_test` database. Standard `npm test` remains database-free and is the command executed by CI. See [issue #2](https://github.com/lomeshpawar/QueueLess/issues/2) for the remaining end-to-end harness work.
 
 ## GitHub Pages deployment
 
