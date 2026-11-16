@@ -58,8 +58,7 @@ jobs:
       - name: Check backend JavaScript syntax
         working-directory: QueueLess/server
         run: |
-          find . -type f -name '*.js' -not -path './node_modules/*' -print0 \\
-            | xargs -0 -r -n1 node --check
+          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -r -n1 node --check
 
       # The optional API scenario runner is intentionally excluded from CI.
       # It requires a separately started API server and a disposable *_test database.
